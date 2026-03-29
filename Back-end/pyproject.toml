@@ -1,0 +1,16 @@
+[project]
+name = "back-end"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "linhphung211",email = "lphungtuan2004@gmail.com"}
+]
+requires-python = ">=3.11"
+dependencies = [
+    "django (>=6.0.3,<7.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
