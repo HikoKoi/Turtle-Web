@@ -1,0 +1,36 @@
+# Sử dụng bản slim để tối ưu dung lượng
+FROM python:3.12-slim
+
+# Chống tạo file .pyc và hỗ trợ xem log real-time
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PATH="/root/.local/bin:$PATH"
+
+# Cài đặt các thư viện hệ thống cần thiết cho psycopg2 và Poetry
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+WORKDIR /app
+
+# COPY file cấu hình từ thư mục gốc (Back-end/) vào container
+# Lưu ý: Lệnh này hoạt động vì 'context' trong docker-compose sẽ được đặt ở gốc
+COPY pyproject.toml poetry.lock ./
+
+# Cài đặt dependencies không tạo venv
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
+
+# Copy toàn bộ mã nguồn vào container
+COPY . .
+
+# Mở cổng 8000 cho Django
+EXPOSE 8000
+
+# Lệnh khởi chạy server (trỏ đúng vào manage.py trong turtle_project)
+CMD ["python", "turtle_project/manage.py", "runserver", "0.0.0.0:8000"]
