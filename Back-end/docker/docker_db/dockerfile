@@ -4,5 +4,5 @@ FROM postgres:17
 # (Tùy chọn) Copy file cấu hình tối ưu vào image
 # COPY postgresql.conf /etc/postgresql/postgresql.conf
 
-Các file SQL trong thư mục này sẽ tự chạy khi khởi tạo DB lần đầu
+# Các file SQL trong thư mục này sẽ tự chạy khi khởi tạo DB lần đầu
 COPY ./init-db/ /docker-entrypoint-initdb.d/
