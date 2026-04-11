@@ -6,9 +6,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 from django.contrib.auth.hashers import check_password
-from ..models import User, UserSession
+from ..models import User, UserSession, OTPVerification
 from .serializers import UserSerializer, UserSessionSerializer
-
+import random
+from django.core.mail import send_mail
 # --- HÀM HỖ TRỢ XÁC THỰC ---
 def get_user_from_session(request):
     """
@@ -143,3 +144,45 @@ class SessionLifecycleView(APIView):
             return Response({'message': 'Đã đăng xuất khỏi thiết bị được chọn.'}, status=status.HTTP_200_OK)
         except UserSession.DoesNotExist:
             return Response({'error': 'Session không tồn tại hoặc không thuộc quyền sở hữu.'}, status=status.HTTP_404_NOT_FOUND)
+        
+class RequestOTPView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        
+        # 1. Tạo mã OTP 6 số
+        otp_code = str(random.randint(100000, 999999))
+        
+        # 2. Lưu vào DB
+        OTPVerification.objects.create(email=email, otp_code=otp_code)
+        
+        # 3. Gửi email
+        subject = 'Mã xác thực OTP của bạn'
+        message = f'Mã OTP của bạn là: {otp_code}. Mã này sẽ hết hạn trong 5 phút.'
+        send_mail(
+            subject, 
+            message, 
+            'email_he_thong_cua_ban@gmail.com', # Từ ai
+            [email], # Gửi tới ai
+            fail_silently=False,
+        )
+        return Response({'message': 'OTP đã được gửi tới email của bạn.'})
+    
+class VerifyOTPView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        otp_code = request.data.get('otp_code')
+        
+        # Tìm OTP mới nhất của email này
+        otp_record = OTPVerification.objects.filter(email=email, otp_code=otp_code).order_by('-created_at').first()
+        
+        if otp_record and otp_record.is_valid():
+            otp_record.is_used = True # Đánh dấu đã dùng để không bị xài lại
+            otp_record.save()
+            
+            # --- TÙY VÀO MỤC ĐÍCH MÀ BẠN XỬ LÝ TIẾP ---
+            # Nếu là đăng ký: Cho phép tạo tài khoản
+            # Nếu là Quên mật khẩu: Trả về một token tạm thời để họ được phép gọi API /reset-password/
+            
+            return Response({'message': 'Xác thực thành công!', 'status': 'VERIFIED'})
+            
+        return Response({'error': 'Mã OTP không hợp lệ hoặc đã hết hạn.'}, status=400)

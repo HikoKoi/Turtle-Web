@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
-
+from django.utils import timezone
+from datetime import timedelta
 class User(models.Model):
     # Cột id sẽ được Django tự động tạo làm Primary Key
     full_name = models.CharField(max_length=255)
@@ -35,3 +36,14 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.session_id}"
+    
+class OTPVerification(models.fields):
+    email = models.EmailField()
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False) # Đánh dấu xem OTP đã được dùng chưa
+
+    def is_valid(self):
+        # Kiểm tra OTP còn hạn trong 5 phút
+        expiration_time = self.created_at + timedelta(minutes=5)
+        return timezone.now() <= expiration_time and not self.is_used
