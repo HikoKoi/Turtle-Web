@@ -33,4 +33,4 @@ COPY . .
 EXPOSE 8000
 
 # Lệnh khởi chạy server (trỏ đúng vào manage.py trong turtle_project)
-CMD ["python", "turtle_project/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]

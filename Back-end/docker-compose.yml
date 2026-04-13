@@ -1,21 +1,9 @@
 services:
-  # db:
-  #   build: 
-  #     context: ./docker/docker_db
-  #     dockerfile: dockerfile
-  #   container_name: turtle_db_container
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USERNAME}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #   ports:
-  #     - "${POSTGRES_PORT}:5432"
-  #   volumes:
-  #     # Volume này giúp dữ liệu được lưu lại sau khi tắt container
-  #     - postgres_data:/var/lib/postgresql/data
-  #   restart: no
+  redis:
+    image: redis:7-alpine
+    container_name: turtle_redis_container
+    ports:
+      - "6379:6379"
 
   web:
     build:
@@ -30,8 +18,26 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    # depends_on:
-    #   - db
+    depends_on:
+      - redis
 
-# volumes:
-#   postgres_data:
+  # CELERY WORKER: Thằng này đi gửi OTP, gửi Mail (Làm việc ngay)
+  celery_worker:
+    build: .
+    container_name: turtle_worker
+    command: celery -A core_root worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  # CELERY BEAT: Thằng này canh đồng hồ để xóa User 30 ngày (Lên lịch)
+  celery_beat:
+    build: .
+    container_name: turtle_beat
+    command: celery -A core_root beat -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
