@@ -18,7 +18,8 @@ from django.contrib import admin
 from django.urls import path, include  
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/user/', include('apps.user.api.urls')),
+    path('api/users/', include('user.api.urls')),
+    path('api/lessons/', include('lesson.api.urls')),
 ]
 
 admin.site.site_header = "Turtle Web Administration"

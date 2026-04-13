@@ -1,145 +1,208 @@
-import secrets
-from datetime import timedelta
-from django.utils import timezone
-from rest_framework.views import APIView
+from django.contrib.auth import authenticate
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
-from django.db.models import Q
-from django.contrib.auth.hashers import check_password
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils import timezone
+from datetime import timedelta
 from ..models import User, UserSession
-from .serializers import UserSerializer, UserSessionSerializer
+from .serializers import RegisterSerializer, UserProfileSerializer
+from django.contrib.auth.models import update_last_login
+import random
+from django.core.cache import cache
+from django.core.mail import send_mail
 
-# --- HÀM HỖ TRỢ XÁC THỰC ---
-def get_user_from_session(request):
-    """
-    Hàm này lấy session_id từ header 'Authorization' để kiểm tra xem
-    người dùng đã đăng nhập hay chưa và session còn hạn không.
-    """
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return None, "Thiếu session_id trong header Authorization."
-    
-    try:
-        session_id = auth_header.replace('Bearer ', '')
-        session = UserSession.objects.get(session_id=session_id)
-        
-        if session.is_revoked:
-            return None, "Phiên đăng nhập đã bị thu hồi."
-        if session.expired_at < timezone.now():
-            return None, "Phiên đăng nhập đã hết hạn."
-            
-        return session.user, None
-    except UserSession.DoesNotExist:
-        return None, "Session không hợp lệ."
-    except ValueError:
-        return None, "Định dạng session_id không đúng."
+class UserViewSet(viewsets.GenericViewSet):
+    def get_serializer_class(self):
+        if self.action == 'register': return RegisterSerializer
+        return UserProfileSerializer
 
-# --- 1. API ĐĂNG NHẬP (CHIẾN LƯỢC ĐỘC QUYỀN) ---
-class LoginView(APIView):
-    def post(self, request):
-        username = request.data.get('username')
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"msg": "Đăng ký thành công"}, status=201)
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def login(self, request):
+    # --- Bước 1: Xác thực tài khoản ---
+        # --- BƯỚC 0: Lấy dữ liệu đa phương thức từ FE ---
+        username_in = request.data.get('username')
+        email_in = request.data.get('email')
+        phone_in = request.data.get('phone_number')
         password = request.data.get('password')
 
-        if not username or not password:
-            return Response({'error': 'Vui lòng cung cấp username và password.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Xác định chuỗi định danh duy nhất (Identity)
+        identity = username_in or email_in or phone_in
 
-        # Bước 1: Tìm user dựa trên username
-        user = User.objects.filter(username=username).first()
-        
-        # Bước 2: Dùng check_password để so sánh mật khẩu người dùng nhập với mật khẩu đã hash trong DB
-        if not user or not check_password(password, user.password):
-            return Response({'error': 'Sai tên đăng nhập hoặc mật khẩu.'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not identity or not password:
+            return Response({"error": "Vui lòng nhập tài khoản và mật khẩu"}, status=400)
 
-        # =====================================================================
-        # BƯỚC 3: XỬ LÝ ĐỘC QUYỀN ĐĂNG NHẬP (ĐÁ SESSION CŨ)
-        # Vô hiệu hóa tất cả các phiên đăng nhập đang hoạt động của user này
-        # =====================================================================
-        UserSession.objects.filter(user=user, is_revoked=False).update(is_revoked=True)
+        # --- BƯỚC 1: Xác thực tài khoản ---
+        # Django sẽ dùng MultiFieldModelBackend để quét username/email/phone
+        user = authenticate(request, username=identity, password=password)
 
-        # Bước 4: Tạo Refresh Token và lưu Session mới cho thiết bị hiện tại
-        refresh_token = secrets.token_hex(32)
-        expired_at = timezone.now() + timedelta(days=30) 
-        
-        ip_address = request.META.get('REMOTE_ADDR')
-        user_agent = request.META.get('HTTP_USER_AGENT')[:250] if request.META.get('HTTP_USER_AGENT') else 'Unknown'
+        if user is not None:
+            if not user.is_active:
+            return Response({
+                "error": "Tài khoản của Hiệp sĩ đã bị đóng băng do lâu ngày không hoạt động. Hãy nhờ cha mẹ liên hệ Admin để rã đông nhé! ❄️🐢"
+            }, status=status.HTTP_403_FORBIDDEN)
 
-        session = UserSession.objects.create(
-            user=user,
-            refresh_token=refresh_token,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            expired_at=expired_at
-        )
+        if user:
+            update_last_login(None, user)  # Cập nhật last_login mỗi khi đăng nhập thành công
+        else:
+            return Response({"error": "Thông tin đăng nhập không chính xác"}, status=401)
 
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:250]
+        now = timezone.now()
+
+        # --- BƯỚC 1: KIỂM TRA CHẶN TRUY CẬP (DÀNH CHO MÁY B) ---
+        # Tìm xem có bất kỳ thiết bị nào KHÁC đang chiếm ghế không
+
+        active_session_elsewhere = UserSession.objects.filter(
+                user=user,
+                is_revoked=False  # Đang giữ kết nối WebSocket
+            ).exclude(user_agent=user_agent).exists()
+
+        if active_session_elsewhere:
+            return Response({
+                "error": "Tài khoản hiện đang được đăng nhập ở 1 thiết bị khác, vui lòng thử lại sau."
+            }, status=403)
+
+        # --- Bước 3: Tìm kiếm session cũ của thiết bị này ---
+        existing_session = UserSession.objects.filter(user=user, user_agent=user_agent).first()
+
+        # --- Bước 4: Kiểm tra điều kiện "Hồi sinh" ---
+        # CHỈ hồi sinh nếu session tồn tại VÀ chưa quá thời gian expired_at
+        if existing_session and existing_session.expired_at > now:
+            # HÀNH ĐỘNG: HỒI SINH
+            # Reset lại thời gian 7 ngày mới, set is_revoked về False
+            existing_session.refresh_expiry() 
+            session = existing_session
+            msg = "Session cũ đã được hồi sinh và gia hạn."
+        else:
+            # HÀNH ĐỘNG: TẠO MỚI (Trường hợp chưa có máy này hoặc máy này đã QUÁ HẠN)
+            # Lưu ý: Chúng ta không xóa bản ghi cũ ở đây theo ý bạn, 
+            # bản ghi cũ quá hạn sẽ nằm đó cho Celery xóa sau.
+            jwt = RefreshToken.for_user(user)
+            session = UserSession.objects.create(
+                user=user,
+                refresh_token=str(jwt),
+                expired_at=now + timedelta(days=7),
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=user_agent
+            )
+            msg = "Tạo phiên làm việc mới thành công."
+
+        # --- Bước 5: Trả về Token mới cho phiên này ---
+        jwt = RefreshToken.for_user(user)
         return Response({
-            'message': 'Đăng nhập thành công',
-            'session_id': session.session_id,
-            'refresh_token': session.refresh_token,
-            'user': UserSerializer(user).data
-        }, status=status.HTTP_200_OK)
+            "access": str(jwt.access_token),
+            "refresh": str(jwt),
+            "message": msg,
+            "session_id": session.session_id,
+            "user": UserProfileSerializer(user).data
+        })
 
-# --- 2. API ĐĂNG XUẤT ---
-class LogoutView(APIView):
-    def post(self, request):
-        # Yêu cầu client gửi session_id cần đăng xuất trong body hoặc header
-        session_id = request.data.get('session_id') or request.headers.get('Authorization', '').replace('Bearer ', '')
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def logout(self, request):
+        # ĐĂNG XUẤT: Xóa vĩnh viễn khỏi DB
+        # refresh_token = request.data.get('refresh')
+        # UserSession.objects.filter(refresh_token=refresh_token).delete()
+        session_id = request.data.get('session_id')
+        UserSession.objects.filter(session_id=session_id).delete()
+        return Response(status=204)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        user = request.user
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:250]
+
+        session = UserSession.objects.filter(
+            user=user, 
+            user_agent=user_agent
+        ).first()
+
+        if not session or session.is_revoked:
+            return Response(
+                {"error": "Phiên làm việc đã bị vô hiệu hóa hoặc hết hạn"}, 
+                status=401
+            )
         
-        try:
-            session = UserSession.objects.get(session_id=session_id)
-            session.is_revoked = True  # Đánh dấu session đã bị hủy
-            session.save()
-            return Response({'message': 'Đăng xuất thành công.'}, status=status.HTTP_200_OK)
-        except UserSession.DoesNotExist:
-            return Response({'error': 'Không tìm thấy phiên đăng nhập.'}, status=status.HTTP_404_NOT_FOUND)
+        # Nếu session ổn, cập nhật thời gian hết hạn
+        session.refresh_expiry() 
 
-# --- 3. API QUẢN LÝ THÔNG TIN USER ---
-class UserProfileView(APIView):
-    def get(self, request):
-        user, error = get_user_from_session(request)
-        if error: return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
+        # QUAN TRỌNG: Trả về dữ liệu cho Frontend
+        return Response(UserProfileSerializer(user).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAuthenticated])
+    def update_profile(self, request):
+        user = request.user
+        # partial=True cho phép cập nhật chỉ một vài trường mà không bắt buộc gửi hết
+        serializer = UserProfileSerializer(user, data=request.data, partial=True)
         
-        serializer = UserSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def put(self, request):
-        user, error = get_user_from_session(request)
-        if error: return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
-
-        serializer = UserSerializer(user, data=request.data, partial=True) # partial=True cho phép update 1 vài trường
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Cập nhật thông tin thành công', 'data': serializer.data})
+            return Response({
+                "message": "Cập nhật thông tin hiệp sĩ thành công!",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# --- 4. API VÒNG ĐỜI & QUẢN LÝ SESSION ---
-class SessionLifecycleView(APIView):
-    # Lấy danh sách các thiết bị/phiên đang hoạt động
-    def get(self, request):
-        user, error = get_user_from_session(request)
-        if error: return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # Lấy các session chưa hết hạn và chưa bị revoke
-        active_sessions = UserSession.objects.filter(
-            user=user, 
-            is_revoked=False, 
-            expired_at__gt=timezone.now()
-        ).order_by('-created_at')
-
-        serializer = UserSessionSerializer(active_sessions, many=True)
-        return Response({'active_sessions': serializer.data}, status=status.HTTP_200_OK)
-
-    # Đăng xuất khỏi thiết bị khác (Xóa session_id cụ thể)
-    def delete(self, request, session_id_to_revoke):
-        user, error = get_user_from_session(request)
-        if error: return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
-
-        try:
-            session_to_revoke = UserSession.objects.get(
-                session_id=session_id_to_revoke, 
-                user=user # Bảo mật: Chỉ được xóa session của chính mình
+        # Kiểm tra: Nếu không có session HOẶC session đó đã bị revoked
+        if not session or session.is_revoked:
+            return Response(
+                {"error": "Phiên làm việc đã bị vô hiệu hóa (đăng nhập nơi khác) hoặc hết hạn"}, 
+                status=401
             )
-            session_to_revoke.is_revoked = True
-            session_to_revoke.save()
-            return Response({'message': 'Đã đăng xuất khỏi thiết bị được chọn.'}, status=status.HTTP_200_OK)
-        except UserSession.DoesNotExist:
-            return Response({'error': 'Session không tồn tại hoặc không thuộc quyền sở hữu.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Nếu session vẫn còn sống (is_revoked=False) thì mới hồi sinh
+        session.refresh_expiry() 
+        return Response(UserProfileSerializer(user).data)
+
+
+    @action(detail=False, methods=['post'], url_path='send-otp')
+    def send_otp(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Vui lòng cung cấp Email"}, status=400)
+
+        # 1. Tạo mã OTP 6 số
+        otp = str(random.randint(100000, 999999))
+
+        # 2. Lưu vào Redis trong 5 phút (300 giây)
+        cache.set(f"otp_{email}", otp, timeout=300)
+
+        # 3. Gửi Email
+        subject = "Mã xác thực cho Hiệp sĩ Rùa 🐢"
+        message = f"Mã OTP của con là: {otp}. Mã này sẽ hết hạn sau 5 phút nhé!"
+        send_mail(subject, message, settings.EMAIL_HOST_USER, [email])
+
+        return Response({"message": "Mã OTP đã được gửi đến Email của cha mẹ!"})
+
+    @action(detail=False, methods=['post'], url_path='verify-otp')
+    def verify_otp(self, request):
+        email = request.data.get('email')
+        otp_input = request.data.get('otp')
+
+        # 1. Lấy mã từ Redis
+        otp_stored = cache.get(f"otp_{email}")
+
+        if not otp_stored:
+            return Response({"error": "Mã OTP đã hết hạn hoặc không tồn tại"}, status=400)
+
+        if otp_input != otp_stored:
+            return Response({"error": "Mã OTP không chính xác, thử lại nhé!"}, status=400)
+
+        # 2. Xác thực thành công
+        user = request.user
+        user.email = email
+        user.is_email_verified = True
+        user.save()
+
+        # 3. Xóa OTP sau khi dùng xong
+        cache.delete(f"otp_{email}")
+
+        return Response({"message": "Xác thực Email thành công! Chúc mừng hiệp sĩ!"})

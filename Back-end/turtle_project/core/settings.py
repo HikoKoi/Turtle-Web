@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import sys
 from dotenv import load_dotenv # 1. Import thư viện
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,8 +48,32 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apps.user', 
+    'user', 
+    'lesson',
+    'channels'
 ]
+
+ASGI_APPLICATION = 'core.asgi.application'
+# Cấu trúc: 'tên_app.Tên_Class_Model'
+AUTH_USER_MODEL = 'user.User'
+
+AUTHENTICATION_BACKENDS = [
+    'user.backends.MultiFieldModelBackend', # Đường dẫn tới file bạn vừa tạo
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+CELERY_BEAT_SCHEDULE = {
+    'delete-inactive-users-every-midnight': {
+        'task': 'user.tasks.delete_inactive_users',
+        'schedule': crontab(hour=0, minute=0), # Chạy lúc 00:00 mỗi đêm
+    },
+
+    # Task xóa Session hết hạn (THÊM MỚI)
+    'cleanup-expired-sessions-daily': {
+        'task': 'apps.user.tasks.cleanup_expired_sessions',
+        'schedule': crontab(hour=0, minute=30), # Chạy lúc 00:30 đêm (sau task xóa user 30p)
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -58,6 +84,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # Thêm dòng này
+    ),
+}
 
 ROOT_URLCONF = 'core.urls'
 
@@ -81,6 +114,27 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
+# settings.py
+
+# Cấu hình gửi Mail (Dùng App Password của Gmail)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-app-password'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        # "LOCATION": "redis://redis:6379/1", # Tên service redis trong docker-compose
+        "LOCATION": "redis://127.0.0.1:6379/1", # Dùng localhost khi chạy local
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 DATABASES = {
     'default': {
@@ -125,7 +179,30 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# 1. Khai báo Backend (Dành cho Django 4.2+ nên dùng STORAGES)
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
-STATIC_URL = 'static/'
+# 2. Thông số từ Supabase (Đảm bảo các biến env này KHÔNG có https:// ở đầu nếu Linh tự nối)
+AWS_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY')
+AWS_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_KEY')
+AWS_STORAGE_BUCKET_NAME = 'avatars'
+
+# ENDPOINT chuẩn của Supabase có dạng: https://[project-id].supabase.co/storage/v1/s3
+AWS_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT')
+
+# 3. Cấu hình URL để hiển thị ảnh
+# Với Supabase, URL công khai sẽ có dạng: https://[id].supabase.co/storage/v1/object/public/avatars/
+AWS_S3_CUSTOM_DOMAIN = f"{os.getenv('SUPABASE_PROJECT_ID')}.supabase.co/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+
+# 4. Các cấu hình bổ sung
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_QUERYSTRING_AUTH = False 
+AWS_DEFAULT_ACL = None
