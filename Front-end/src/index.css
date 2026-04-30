@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  /* =============================================
+     NEOBRUTALISM DESIGN SYSTEM — Turtle Web
+     Màu sắc nhạt, vui tươi, phù hợp trẻ em
+  ============================================= */
+  :root {
+    /* Màu nền */
+    --bg:          #f5f0eb;   /* Kem ấm — nền chính toàn trang */
+    --card:        #ffffff;   /* Trắng — nền thẻ/card */
+
+    /* Màu chủ đạo */
+    --orange:      #f5a623;   /* Cam vàng — nút chính, active */
+    --orange-dark: #e09010;   /* Cam đậm hơn — hover */
+    --cyan:        #22d3ee;   /* Xanh lam nhạt — accent phụ */
+    --cyan-dark:   #06b6d4;
+    --pink:        #ffb5ba;   /* Hồng pastel — nút reset, accent */
+    --purple:      #c4b5fd;   /* Tím nhạt */
+    --green:       #86efac;   /* Xanh lá nhạt */
+    --yellow:      #fde68a;   /* Vàng nhạt */
+
+    /* Màu viền & chữ — Neobrutalism đặc trưng: viền đen đậm */
+    --border:      #1a1a1a;   /* Đen gần như tuyệt đối */
+    --text:        #1a1a1a;
+    --text-muted:  #6b7280;
+    --text-light:  #9ca3af;
+
+    /* Bóng đổ Neobrutalism — lệch offset thay vì mờ */
+    --shadow-sm:   3px 3px 0px #1a1a1a;
+    --shadow-md:   4px 4px 0px #1a1a1a;
+    --shadow-lg:   6px 6px 0px #1a1a1a;
+
+    /* Bo góc — không quá tròn */
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+
+    /* Viền */
+    --border-w:    2.5px;
+
+    font-family: 'Nunito', sans-serif;
+  }
+
+  /* Dark mode — giữ phong cách Neobrutalism nhưng tối hơn */
+  .dark {
+    --bg:         #1c1c1c;
+    --card:       #2a2a2a;
+    --border:     #e5e5e5;
+    --text:       #f0f0f0;
+    --text-muted: #9ca3af;
+    --shadow-sm:  3px 3px 0px #e5e5e5;
+    --shadow-md:  4px 4px 0px #e5e5e5;
+    --shadow-lg:  6px 6px 0px #e5e5e5;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* Scrollbar tùy chỉnh — Neobrutalism style */
+  ::-webkit-scrollbar       { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+}
+
+/* =============================================
+   COMPONENT UTILITIES — Tái sử dụng
+============================================= */
+@layer components {
+  /* Thẻ Neobrutalism chuẩn */
+  .neo-card {
+    background: var(--card);
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Input Neobrutalism */
+  .neo-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--card);
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: box-shadow 0.15s;
+  }
+  .neo-input:focus {
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Nút cam chính */
+  .neo-btn-primary {
+    background: var(--orange);
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    color: var(--border);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .neo-btn-primary:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0px var(--border);
+  }
+  .neo-btn-primary:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px var(--border);
+  }
+
+  /* Nút phụ (outline) */
+  .neo-btn-secondary {
+    background: var(--card);
+    border: var(--border-w) solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .neo-btn-secondary:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px var(--border);
+  }
+}
+
+/* Custom Scrollbar Neobrutalism */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-left: 2px solid var(--border);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--yellow);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--orange);
+}
