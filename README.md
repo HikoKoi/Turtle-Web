@@ -47,7 +47,7 @@ npm run dev
 ---
 
 ## 👥 Tác giả
-Dự án được phát triển bởi **HikoKoi**.
+Dự án được phát triển bởi **HikoKoi** && **linhphung211** && **Thson23**.
 *   **Github**: [https://github.com/HikoKoi/Turtle-Web](https://github.com/HikoKoi/Turtle-Web.git)
 
 ---

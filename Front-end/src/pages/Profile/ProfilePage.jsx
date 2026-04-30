@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '../../hooks/useAuth';
@@ -34,8 +34,15 @@ const getCroppedImg = (imageSrc, pixelCrop) => {
 };
 
 export default function ProfilePage() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // CHẶN CỬA: Nếu chưa đăng nhập thì không cho xem gì hết, biến đi chỗ khác ngay! 🐢🚪
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const [activeTab, setActiveTab] = useState('info');
   const [showPassword, setShowPassword] = useState(false);
