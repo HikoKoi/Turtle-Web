@@ -4,11 +4,26 @@ import { useProjects } from '../../contexts/ProjectContext';
 import { useNavigate } from 'react-router-dom';
 import lessonApi from '../../api/lessonApi';
 
+const SAMPLE_PROGRAMS = [
+  {
+    title: 'Đường Hầm Siêu Tốc',
+    code: 'import turtle\nt = turtle.Turtle()\nt.speed(0)\ncolors = ["red", "purple", "blue", "green", "orange", "yellow"]\nfor x in range(120):\n    t.pencolor(colors[x % 6])\n    t.width(x / 100 + 1)\n    t.forward(x * 2)\n    t.left(59)\n'
+  },
+  {
+    title: 'Vẽ Ngôi Sao',
+    code: 'import turtle\nt = turtle.Turtle()\nt.speed(3)\nt.color("red")\nfor i in range(5):\n    t.forward(150)\n    t.right(144)\n'
+  },
+  {
+    title: 'Hình tròn đa sắc',
+    code: 'import turtle\nt = turtle.Turtle()\nt.speed(0)\ncolors = ["red", "purple", "blue", "green", "orange", "yellow"]\nfor x in range(36):\n    t.pencolor(colors[x % 6])\n    t.circle(50)\n    t.left(10)\n'
+  }
+];
+
 export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick, onResetPlayground, hasUnsavedChanges }) {
   const { user, logout } = useAuth();
   const { projects, fetchProjects } = useProjects();
   const navigate = useNavigate();
-  
+
   const [activeMenu, setActiveMenu] = useState(user ? 'Dự án của tôi' : 'Playground');
   const [showProjects, setShowProjects] = useState(true);
 
@@ -17,7 +32,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
   const handleLogoutClick = () => {
     // Kiểm tra xem có BẤT KỲ dự án nào chưa lưu không
     const hasAnyDrafts = Object.keys(localStorage).some(key => key.startsWith('turtle_draft_'));
-    
+
     if (hasAnyDrafts) {
       const confirmLogout = window.confirm('Rùa thấy bé vẫn còn một số dự án chưa lưu lên Server! Nếu đăng xuất bây giờ, các bản nháp đó sẽ bị xóa hết. Bé có chắc muốn thoát không? 🐢🗑️');
       if (!confirmLogout) return;
@@ -78,7 +93,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
   const getAvatarUrl = () => {
     if (!user?.avatar) return null;
     if (user.avatar.startsWith('http')) return user.avatar;
-    return `http://127.0.0.1:8000${user.avatar}`; 
+    return `http://127.0.0.1:8000${user.avatar}`;
   };
 
   return (
@@ -96,11 +111,10 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
             <div className="relative group">
               <button
                 onClick={() => handleMenuClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-base transition-all border-[2.5px] ${
-                  activeMenu === item.label
-                    ? 'bg-[var(--orange)] border-[var(--border)] shadow-[4px_4px_0px_#1a1a1a] translate-x-[-2px] translate-y-[-2px]'
-                    : 'bg-transparent border-transparent hover:bg-[var(--bg)]'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-base transition-all border-[2.5px] ${activeMenu === item.label
+                  ? 'bg-[var(--orange)] border-[var(--border)] shadow-[4px_4px_0px_#1a1a1a] translate-x-[-2px] translate-y-[-2px]'
+                  : 'bg-transparent border-transparent hover:bg-[var(--bg)]'
+                  }`}
               >
                 <span className="text-xl">{item.icon}</span>
                 {item.label}
@@ -120,12 +134,37 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
                 <button
                   onClick={(e) => { e.stopPropagation(); onResetPlayground(); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-red-500 rounded-md flex items-center justify-center font-black text-[10px] text-red-500 shadow-[2px_2px_0px_#ef4444] hover:bg-red-500 hover:text-white transition-all active:shadow-none active:translate-y-[-45%] opacity-0 group-hover:opacity-100"
-                  title="Reset Playground"
+                  title="Xóa nháp và làm lại từ đầu"
                 >
                   ✕
                 </button>
               )}
             </div>
+
+            {item.label === 'Playground' && activeMenu === 'Playground' && (
+              <div className="mt-2 ml-4 space-y-2 border-l-2 border-[var(--border)] pl-4 py-2 animate-in slide-in-from-top-2">
+                <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Bài vẽ mẫu của hệ thống</div>
+
+                <button
+                  onClick={() => onPlaygroundClick('default', null, 'Playground 🎨')}
+                  className="w-full text-left text-xs font-bold py-2 px-3 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                  title="Playground 🎨"
+                >
+                  🎨 Playground
+                </button>
+
+                {SAMPLE_PROGRAMS.map((sample, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => onPlaygroundClick(`sample_${idx}`, sample.code, sample.title)}
+                    className="w-full text-left text-xs font-bold py-2 px-3 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                    title={sample.title}
+                  >
+                    🎨 {sample.title}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {user && item.label === 'Dự án của tôi' && showProjects && (
               <div className="mt-2 ml-4 space-y-2 border-l-2 border-[var(--border)] pl-4 py-2 animate-in slide-in-from-top-2">
@@ -139,7 +178,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
                       >
                         📄 {p.title}
                       </button>
-                      <button 
+                      <button
                         onClick={(e) => handleDelete(e, p.id, p.title)}
                         className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
                       >
@@ -172,9 +211,9 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
               {user?.first_name || user?.username || 'Hiệp sĩ Rùa'}
             </p>
           </div>
-          
+
           {user && (
-            <button 
+            <button
               onClick={() => navigate('/profile')}
               className="w-7 h-7 bg-white border-2 border-[var(--border)] rounded-md flex items-center justify-center text-xs shadow-[2px_2px_0px_#000] hover:bg-[var(--yellow)] transition-all active:shadow-none active:translate-y-[1px]"
               title="Cài đặt tài khoản"

@@ -11,24 +11,26 @@ import { useAuth } from '../../hooks/useAuth';
 import { useProjects } from '../../contexts/ProjectContext';
 
 const DEFAULT_COMMANDS = [
-  { label: 'Tiến lên', color: '#88e1bb', code: 't.forward(100)' },
-  { label: 'Xoay phải', color: '#ffbd2e', code: 't.right(90)' },
-  { label: 'Xoay trái', color: '#ff5f56', code: 't.left(90)' },
-  { label: 'Hình vuông', color: '#8ed1f7', code: 'for i in range(4):\n    t.forward(100)\n    t.right(90)' },
-  { label: 'Hình tròn', color: '#d18cf7', code: 't.circle(50)' },
-  { label: 'Về nhà', color: '#ffffff', code: 't.home()' },
+  { label: 'Tiến lên', icon: '⬆️', code: 't.forward(100)' },
+  { label: 'Lùi xuống', icon: '⬇️', code: 't.backward(100)' },
+  { label: 'Xoay phải', icon: '➡️', code: 't.right(90)' },
+  { label: 'Xoay trái', icon: '⬅️', code: 't.left(90)' },
+  { label: 'Hình vuông', icon: '🟥', code: 'for i in range(4):\n    t.forward(100)\n    t.right(90)' },
+  { label: 'Hình tròn', icon: '🔴', code: 't.circle(50)' },
+  { label: 'Về nhà', icon: '🏠', code: 't.home()' },
 ];
 
 export default function WorkspacePage() {
   const { user, setUser } = useAuth();
   const { fetchProjects } = useProjects();
-  
+
   const [isPlayground, setIsPlayground] = useState(!user);
+  const [playgroundId, setPlaygroundId] = useState('default');
   const [projectId, setProjectId] = useState(null);
   const [projectTitle, setProjectTitle] = useState(user ? 'Dự án sáng tạo của tớ' : 'Playground 🎨');
-  
+
   const PLAYGROUND_TEMPLATE = '# Đây là khu vực vẽ nháp - Tốc độ tối đa\nimport turtle\n\nt = turtle.Turtle()\nt.speed(0) # Chạy siêu nhanh\nt.color("orange")\n\n';
-  const playgroundKey = `turtle_playground_${user?.username || 'guest'}`;
+  const getPlaygroundKey = (id) => `turtle_playground_${id}_${user?.username || 'guest'}`;
   const commandsKey = `turtle_commands_${user?.username || 'guest'}`;
 
   // --- LOGIC LOAD NÚT LỆNH ---
@@ -45,15 +47,15 @@ export default function WorkspacePage() {
 
   const [code, setCode] = useState(() => {
     if (!user) {
-        return localStorage.getItem(playgroundKey) || PLAYGROUND_TEMPLATE;
+      return localStorage.getItem(getPlaygroundKey('default')) || PLAYGROUND_TEMPLATE;
     }
     return '# Nhập code Python của bạn ở đây\nimport turtle\n\nt = turtle.Turtle()\nt.shape("turtle")\nt.speed(3)\nt.color("green")\n\n';
   });
 
   const [runTrigger, setRunTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(''); 
-  
+  const [saveStatus, setSaveStatus] = useState('');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
 
@@ -83,29 +85,29 @@ export default function WorkspacePage() {
     };
 
     const handleUnload = () => {
-        // Luôn xóa sạch Playground và các bản nháp khi thực sự thoát/đóng trình duyệt
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('turtle_draft') || key.startsWith('turtle_playground')) {
-              localStorage.removeItem(key);
-            }
-        });
+      // Luôn xóa sạch Playground và các bản nháp khi thực sự thoát/đóng trình duyệt
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('turtle_draft') || key.startsWith('turtle_playground')) {
+          localStorage.removeItem(key);
+        }
+      });
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('unload', handleUnload);
-    
+
     return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        window.removeEventListener('unload', handleUnload);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
     };
   }, []);
 
   // Lưu code playground cục bộ
   useEffect(() => {
     if (isPlayground) {
-      localStorage.setItem(playgroundKey, code);
+      localStorage.setItem(getPlaygroundKey(playgroundId), code);
     }
-  }, [code, isPlayground]);
+  }, [code, isPlayground, playgroundId, user]);
 
   // --- LOGIC LƯU NÚT LỆNH TOÀN CỤC ---
   const syncCommands = async (newCommands) => {
@@ -126,7 +128,7 @@ export default function WorkspacePage() {
   };
 
   const handleSave = async () => {
-    if (isPlayground) return; 
+    if (isPlayground) return;
     setIsSaving(true);
     setSaveStatus('');
     try {
@@ -158,10 +160,10 @@ export default function WorkspacePage() {
     setIsPlayground(false);
     setProjectId(projectData.id);
     setProjectTitle(projectData.title);
-    
+
     const draftKey = `turtle_draft_${user.username}_${projectData.id}`;
     const draft = localStorage.getItem(draftKey);
-    
+
     if (draft && draft !== projectData.code_display) {
       setCode(draft);
       setLastSavedCode(projectData.code_display);
@@ -186,22 +188,36 @@ export default function WorkspacePage() {
     setSaveStatus('');
   };
 
-  const handlePlaygroundMode = () => {
+  const handlePlaygroundMode = (sampleId = 'default', sampleCode = null, sampleTitle = 'Playground 🎨') => {
     setIsPlayground(true);
     setProjectId(null);
-    setProjectTitle('Playground 🎨');
-    const savedCode = localStorage.getItem(playgroundKey);
-    setCode(savedCode || PLAYGROUND_TEMPLATE);
-    setLastSavedCode(savedCode || PLAYGROUND_TEMPLATE);
+    setPlaygroundId(sampleId);
+    setProjectTitle(sampleTitle);
+
+    const key = getPlaygroundKey(sampleId);
+    const savedCode = localStorage.getItem(key);
+
+    if (savedCode) {
+      setCode(savedCode);
+      setLastSavedCode(savedCode);
+    } else {
+      const newCode = sampleCode || PLAYGROUND_TEMPLATE;
+      setCode(newCode);
+      setLastSavedCode(newCode);
+    }
     setIsDirty(false);
     setRunTrigger(0);
     setSaveStatus('');
   };
 
   const handleResetPlayground = () => {
-    if (window.confirm('Xóa hết nháp để làm lại từ đầu nhé Hiệp sĩ? 🐢🗑️')) {
-      setCode(PLAYGROUND_TEMPLATE);
-      localStorage.setItem(playgroundKey, PLAYGROUND_TEMPLATE);
+    if (window.confirm('Xóa sạch mọi bản nháp (kể cả bài vẽ mẫu) để làm lại từ đầu nhé? 🐢🗑️')) {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('turtle_playground_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      handlePlaygroundMode('default', null, 'Playground 🎨');
     }
   };
 
@@ -256,12 +272,18 @@ export default function WorkspacePage() {
     setIsModalOpen(true);
   };
 
+  const handleResetCommands = () => {
+    if (window.confirm('Khôi phục lại tập lệnh mặc định của Hiệp sĩ Rùa nhé? 🐢')) {
+      syncCommands(DEFAULT_COMMANDS);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[var(--bg)] overflow-hidden font-nunito">
-      <Sidebar 
-        onLoadProject={handleLoadProject} 
-        onNewProject={handleNewProject} 
-        onPlaygroundClick={handlePlaygroundMode} 
+      <Sidebar
+        onLoadProject={handleLoadProject}
+        onNewProject={handleNewProject}
+        onPlaygroundClick={handlePlaygroundMode}
         onResetPlayground={handleResetPlayground}
         hasUnsavedChanges={isDirty}
       />
@@ -269,89 +291,92 @@ export default function WorkspacePage() {
       <main className="flex-1 p-6 flex flex-col gap-4 overflow-hidden">
         <div className="flex justify-between items-center bg-white p-4 neo-card h-16 shrink-0 relative">
           <div className="flex items-center gap-4 flex-1">
-             <div className="bg-[var(--yellow)] px-3 py-1 border-2 border-[var(--border)] rounded-md font-black text-xs shadow-[2px_2px_0px_#1a1a1a]">
-                {isPlayground ? 'BẢN NHÁP ✏️' : 'DỰ ÁN 🚀'}
-             </div>
-             <input 
-                type="text" 
-                value={projectTitle}
-                disabled={isPlayground}
-                onChange={(e) => setProjectTitle(e.target.value)}
-                className={`font-black text-lg bg-transparent border-none outline-none focus:ring-2 focus:ring-[var(--cyan)] rounded px-2 w-full max-w-[400px] ${isPlayground ? 'text-gray-400' : ''}`}
-             />
+            <div className="bg-[var(--yellow)] px-3 py-1 border-2 border-[var(--border)] rounded-md font-black text-xs shadow-[2px_2px_0px_#1a1a1a]">
+              {isPlayground ? 'BẢN NHÁP ✏️' : 'DỰ ÁN 🚀'}
+            </div>
+            <input
+              type="text"
+              value={projectTitle}
+              disabled={isPlayground}
+              onChange={(e) => setProjectTitle(e.target.value)}
+              className={`font-black text-lg bg-transparent border-none outline-none focus:ring-2 focus:ring-[var(--cyan)] rounded px-2 w-full max-w-[400px] ${isPlayground ? 'text-gray-400' : ''}`}
+            />
           </div>
 
           <div className="flex gap-2 flex-1 justify-end items-center">
-             {!isPlayground && (
-               <button 
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className={`neo-btn-secondary py-1 text-sm px-6 transition-all ${
-                    saveStatus === 'success' ? 'bg-[var(--green)]' : 
-                    saveStatus === 'error' ? 'bg-[var(--pink)]' : 
+            {!isPlayground && (
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`neo-btn-secondary py-1 text-sm px-6 transition-all ${saveStatus === 'success' ? 'bg-[var(--green)]' :
+                  saveStatus === 'error' ? 'bg-[var(--pink)]' :
                     isDirty ? 'bg-[#ff5f56] text-white ring-2 ring-red-400 shadow-[0_0_15px_rgba(255,95,86,0.6)] animate-pulse border-red-700' : 'bg-[#fcece2]'
                   }`}
-               >
-                  {isSaving ? 'ĐANG LƯU...' : saveStatus === 'success' ? 'ĐÃ LƯU ✅' : isDirty ? 'LƯU NGAY! 💾' : 'LƯU 💾'}
-               </button>
-             )}
+              >
+                {isSaving ? 'ĐANG LƯU...' : saveStatus === 'success' ? 'ĐÃ LƯU ✅' : isDirty ? 'LƯU NGAY! 💾' : 'LƯU 💾'}
+              </button>
+            )}
 
-             <button 
-                onClick={handleDownload}
-                className="neo-btn-secondary py-1 px-3 bg-white flex items-center justify-center"
-                title="Tải code về máy"
-             >
-                ⬇️
-             </button>
 
-             <input type="file" id="upload-py" className="hidden" accept=".py,.txt" onChange={handleUpload} />
-             <label htmlFor="upload-py" className="neo-btn-secondary py-1 px-3 bg-white flex items-center justify-center cursor-pointer" title="Tải code lên">
-                ⬆️
-             </label>
+            <input type="file" id="upload-py" className="hidden" accept=".py,.txt" onChange={handleUpload} />
+            <label htmlFor="upload-py" className="neo-btn-secondary py-1 px-3 bg-white flex items-center justify-center cursor-pointer" title="Tải code lên">
+              📂
+            </label>
 
-             <button 
-                onClick={() => setRunTrigger(prev => prev + 1)} 
-                className="neo-btn-primary py-1 text-sm px-8 bg-[var(--green)] active:translate-y-1 transition-all"
-             >
-                CHẠY RÙA 🐢 ▶️
-             </button>
+            <button
+              onClick={handleDownload}
+              className="neo-btn-secondary py-1 px-3 bg-white flex items-center justify-center"
+              title="Tải code về máy"
+            >
+              ➜]
+            </button>
+
+
+
+            <button
+              onClick={() => setRunTrigger(prev => prev + 1)}
+              className="neo-btn-primary py-1 text-sm px-8 bg-[var(--green)] active:translate-y-1 transition-all"
+            >
+              CHẠY RÙA 🐢
+            </button>
           </div>
         </div>
 
         <div className="flex-1 flex gap-4 overflow-hidden">
           <div className="flex-1 min-w-0 h-full flex flex-col">
-             <div className="relative flex-1 flex flex-col">
-                <Editor code={code} onChange={setCode} />
-             </div>
+            <div className="relative flex-1 flex flex-col">
+              <Editor code={code} onChange={setCode} />
+            </div>
           </div>
 
           <div className="w-[100px] h-full neo-card overflow-hidden shrink-0">
-             <CommandPalette 
-               commands={commands} 
-               onCommandClick={handleCommandClick}
-               onAddClick={openAddModal}
-               onEditClick={openEditModal}
-             />
+            <CommandPalette
+              commands={commands}
+              onCommandClick={handleCommandClick}
+              onAddClick={openAddModal}
+              onEditClick={openEditModal}
+              onResetClick={handleResetCommands}
+            />
           </div>
 
-          <div className="flex-[1.2] h-full flex flex-col min-w-0">
-             <div className="flex-1 neo-card bg-white relative overflow-hidden flex flex-col shadow-[6px_6px_0px_#1a1a1a]">
-                <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] font-black text-sm text-center uppercase tracking-widest">
-                    Sân chơi của Rùa 🎨
-                </div>
-                <Preview code={code} runTrigger={runTrigger} />
-             </div>
+          <div className="flex-[1.8] h-full flex flex-col min-w-0">
+            <div className="flex-1 neo-card bg-white relative overflow-hidden flex flex-col shadow-[6px_6px_0px_#1a1a1a]">
+              <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] font-black text-sm text-center uppercase tracking-widest">
+                Sân chơi của Rùa 🎨
+              </div>
+              <Preview code={code} runTrigger={runTrigger} />
+            </div>
           </div>
         </div>
       </main>
 
       {user && <ChatbotBubble />}
-      <CommandModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <CommandModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onSave={handleSaveCommand}
         onDelete={handleDeleteCommand}
-        initialData={editingIndex !== null ? {...commands[editingIndex], index: editingIndex} : null}
+        initialData={editingIndex !== null ? { ...commands[editingIndex], index: editingIndex } : null}
       />
     </div>
   );

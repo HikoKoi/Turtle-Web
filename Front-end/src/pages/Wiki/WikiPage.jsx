@@ -40,12 +40,13 @@ export default function WikiPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
+  const [copiedId, setCopiedId] = useState(null);
 
   const categories = ['Tất cả', ...new Set(TURTLE_COMMANDS.map(c => c.category))];
 
   const filteredCommands = TURTLE_COMMANDS.filter(cmd => {
-    const matchesSearch = cmd.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         cmd.desc.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = cmd.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cmd.desc.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'Tất cả' || cmd.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -63,8 +64,8 @@ export default function WikiPage() {
 
           <div className="flex flex-col gap-4 w-full md:w-96">
             <div className="relative">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Tìm phép thuật... ✨"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -81,9 +82,8 @@ export default function WikiPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-lg font-black text-xs border-2 border-[var(--border)] transition-all shadow-[3px_3px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 ${
-                selectedCategory === cat ? 'bg-[var(--orange)]' : 'bg-white hover:bg-gray-50'
-              }`}
+              className={`px-4 py-2 rounded-lg font-black text-xs border-2 border-[var(--border)] transition-all shadow-[3px_3px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 ${selectedCategory === cat ? 'bg-[var(--orange)]' : 'bg-white hover:bg-gray-50'
+                }`}
             >
               {cat}
             </button>
@@ -96,35 +96,41 @@ export default function WikiPage() {
         {filteredCommands.map((cmd) => (
           <div key={cmd.id} className="neo-card bg-white p-5 flex flex-col gap-3 group">
             <div className="flex items-center justify-between">
-               <div className="w-10 h-10 bg-[var(--yellow)] border-2 border-[var(--border)] rounded-xl flex items-center justify-center text-xl shadow-[3px_3px_0px_#000]">
-                  {cmd.icon}
-               </div>
-               <span className="text-[8px] font-black bg-[var(--bg)] px-2 py-1 border border-[var(--border)] rounded uppercase tracking-tighter">
-                  {cmd.category}
-               </span>
+              <div className="w-10 h-10 bg-[var(--yellow)] border-2 border-[var(--border)] rounded-xl flex items-center justify-center text-xl shadow-[3px_3px_0px_#000]">
+                {cmd.icon}
+              </div>
+              <span className="text-xs font-black bg-[var(--bg)] px-2 py-1 border border-[var(--border)] rounded uppercase tracking-tighter">
+                {cmd.category}
+              </span>
             </div>
 
-            <h3 className="font-black text-xs text-[var(--cyan-dark)] uppercase leading-tight truncate" title={cmd.name}>
+            <h3 className="font-black text-lg text-[var(--cyan-dark)] uppercase leading-tight truncate" title={cmd.name}>
               {cmd.name}
             </h3>
 
-            <p className="text-[11px] font-bold text-gray-500 leading-snug min-h-[44px]">
+            <p className="text-sm font-bold text-gray-500 leading-snug min-h-[44px]">
               {cmd.desc}
             </p>
 
             <div className="mt-2 pt-3 border-t-2 border-[var(--bg)] relative">
-              <div className="bg-gray-900 p-3 rounded-lg overflow-hidden group/code">
-                <code className="text-[var(--green)] font-mono text-[10px] font-bold block whitespace-pre">
+              <div
+                className="bg-gray-900 p-3 rounded-lg overflow-hidden group/code relative"
+                onMouseLeave={() => setTimeout(() => setCopiedId(null), 100)}
+              >
+                <code className="text-[var(--green)] font-mono text-sm font-bold block whitespace-pre overflow-x-auto pb-1">
                   {cmd.example}
                 </code>
-                <button 
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(cmd.example);
-                    alert('Đã lấy phép thuật! Bé hãy dán vào xưởng vẽ nhé! 📋✨');
+                    setCopiedId(cmd.id);
                   }}
-                  className="absolute right-2 top-5 bg-[var(--cyan)] border-2 border-black text-[9px] font-black px-2 py-1 rounded shadow-[2px_2px_0px_#000] active:shadow-none opacity-0 group-hover:opacity-100 transition-opacity"
+                  className={`absolute right-2 top-2 border-2 border-black text-xs font-black px-2 py-1 rounded shadow-[2px_2px_0px_#000] active:shadow-none transition-all opacity-0 group-hover/code:opacity-100 ${copiedId === cmd.id
+                    ? 'bg-[var(--green)] text-white'
+                    : 'bg-[var(--cyan)] text-black'
+                    }`}
                 >
-                  COPY
+                  {copiedId === cmd.id ? 'ĐÃ COPY ✔️' : 'COPY'}
                 </button>
               </div>
             </div>
@@ -133,8 +139,8 @@ export default function WikiPage() {
 
         {filteredCommands.length === 0 && (
           <div className="col-span-full py-20 text-center">
-             <div className="text-6xl mb-4">🐢❓</div>
-             <p className="font-black text-gray-400">Rùa chưa học được phép thuật này... Thử từ khác nhé!</p>
+            <div className="text-6xl mb-4">🐢❓</div>
+            <p className="font-black text-gray-400">Rùa chưa học được phép thuật này... Thử từ khác nhé!</p>
           </div>
         )}
       </div>

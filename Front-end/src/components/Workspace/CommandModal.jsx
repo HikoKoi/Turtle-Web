@@ -45,7 +45,7 @@ export default function CommandModal({ isOpen, onClose, onSave, onDelete, initia
               {['#ff5f56', '#ffbd2e', '#27c93f', '#8ed1f7', '#d18cf7', '#ff8eb2', '#ffffff'].map(c => (
                 <button 
                   key={c}
-                  onClick={() => setFormData({...formData, color: c})}
+                  onClick={() => setFormData({...formData, color: c, icon: null})}
                   style={{ backgroundColor: c }}
                   className={`w-8 h-8 rounded-full border-2 border-[var(--border)] transition-transform ${formData.color === c ? 'scale-125 shadow-[2px_2px_0px_#000]' : 'hover:scale-110'}`}
                 />
