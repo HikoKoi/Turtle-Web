@@ -91,7 +91,7 @@
     border-radius: var(--radius-sm);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
-    font-size: 15px;
+    font-size: 17px;
     outline: none;
     transition: box-shadow 0.15s;
   }
@@ -108,7 +108,7 @@
     color: var(--border);
     font-family: 'Nunito', sans-serif;
     font-weight: 800;
-    font-size: 16px;
+    font-size: 18px;
     padding: 12px 24px;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -131,6 +131,7 @@
     color: var(--text);
     font-family: 'Nunito', sans-serif;
     font-weight: 700;
+    font-size: 16px;
     padding: 10px 20px;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -138,6 +139,10 @@
   .neo-btn-secondary:hover {
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0px var(--border);
+  }
+  .neo-btn-secondary:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px var(--border);
   }
 }
 

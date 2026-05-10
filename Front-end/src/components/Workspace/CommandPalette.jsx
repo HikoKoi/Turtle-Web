@@ -6,7 +6,7 @@ export default function CommandPalette({ commands, onCommandClick, onAddClick, o
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] flex flex-col items-center gap-1">
-        <h3 className="font-black text-[8px] uppercase tracking-tighter text-gray-400">Lệnh</h3>
+        <h3 className="font-black text-xs uppercase tracking-tighter text-gray-400">Lệnh</h3>
         
         {/* Chỉ hiện nút thêm nếu đã đăng nhập */}
         {user && (
@@ -40,13 +40,13 @@ export default function CommandPalette({ commands, onCommandClick, onAddClick, o
               {user && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onEditClick(index); }}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-white border-2 border-[var(--border)] rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-white border-2 border-[var(--border)] rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
                 >
                   ✏️
                 </button>
               )}
             </div>
-            <span className="text-[8px] font-black text-center leading-tight uppercase truncate w-20 text-gray-500">
+            <span className="text-[11px] font-black text-center leading-tight uppercase truncate w-20 text-gray-500">
               {cmd.label}
             </span>
           </div>

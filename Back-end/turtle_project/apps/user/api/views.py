@@ -59,16 +59,22 @@ class UserViewSet(viewsets.GenericViewSet):
 
         # --- BƯỚC 1: KIỂM TRA CHẶN TRUY CẬP (DÀNH CHO MÁY B) ---
         # Tìm xem có bất kỳ thiết bị nào KHÁC đang chiếm ghế không
-
-        active_session_elsewhere = UserSession.objects.filter(
+        force = request.data.get('force', False)
+        
+        active_sessions_elsewhere = UserSession.objects.filter(
                 user=user,
                 is_revoked=False  # Đang giữ kết nối WebSocket
-            ).exclude(user_agent=user_agent).exists()
+            ).exclude(user_agent=user_agent)
 
-        if active_session_elsewhere:
-            return Response({
-                "error": "Tài khoản hiện đang được đăng nhập ở 1 thiết bị khác, vui lòng thử lại sau."
-            }, status=403)
+        if active_sessions_elsewhere.exists():
+            if force == True or str(force).lower() == 'true':
+                # Thu hồi các phiên đăng nhập ở thiết bị khác bằng cách update is_revoked thay vì xóa
+                active_sessions_elsewhere.update(is_revoked=True)
+            else:
+                return Response({
+                    "error": "Tài khoản hiện đang được đăng nhập ở 1 thiết bị khác, vui lòng thử lại sau.",
+                    "is_conflict": True
+                }, status=403)
 
         # --- Bước 3: Tìm kiếm session cũ của thiết bị này ---
         existing_session = UserSession.objects.filter(user=user, user_agent=user_agent).first()
@@ -122,6 +128,7 @@ class UserViewSet(viewsets.GenericViewSet):
         session = UserSession.objects.filter(
             user=user, 
             user_agent=user_agent,
+            is_revoked=False,
             expired_at__gt=timezone.now()
         ).first()
 

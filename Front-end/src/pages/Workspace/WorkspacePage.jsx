@@ -269,7 +269,7 @@ export default function WorkspacePage() {
       <main className="flex-1 p-6 flex flex-col gap-4 overflow-hidden">
         <div className="flex justify-between items-center bg-white p-4 neo-card h-16 shrink-0 relative">
           <div className="flex items-center gap-4 flex-1">
-             <div className="bg-[var(--yellow)] px-3 py-1 border-2 border-[var(--border)] rounded-md font-black text-[10px] shadow-[2px_2px_0px_#1a1a1a]">
+             <div className="bg-[var(--yellow)] px-3 py-1 border-2 border-[var(--border)] rounded-md font-black text-xs shadow-[2px_2px_0px_#1a1a1a]">
                 {isPlayground ? 'BẢN NHÁP ✏️' : 'DỰ ÁN 🚀'}
              </div>
              <input 
@@ -286,7 +286,7 @@ export default function WorkspacePage() {
                <button 
                   onClick={handleSave}
                   disabled={isSaving}
-                  className={`neo-btn-secondary py-1 text-xs px-6 transition-all ${
+                  className={`neo-btn-secondary py-1 text-sm px-6 transition-all ${
                     saveStatus === 'success' ? 'bg-[var(--green)]' : 
                     saveStatus === 'error' ? 'bg-[var(--pink)]' : 
                     isDirty ? 'bg-[#ff5f56] text-white ring-2 ring-red-400 shadow-[0_0_15px_rgba(255,95,86,0.6)] animate-pulse border-red-700' : 'bg-[#fcece2]'
@@ -311,7 +311,7 @@ export default function WorkspacePage() {
 
              <button 
                 onClick={() => setRunTrigger(prev => prev + 1)} 
-                className="neo-btn-primary py-1 text-xs px-8 bg-[var(--green)] active:translate-y-1 transition-all"
+                className="neo-btn-primary py-1 text-sm px-8 bg-[var(--green)] active:translate-y-1 transition-all"
              >
                 CHẠY RÙA 🐢 ▶️
              </button>
@@ -336,7 +336,7 @@ export default function WorkspacePage() {
 
           <div className="flex-[1.2] h-full flex flex-col min-w-0">
              <div className="flex-1 neo-card bg-white relative overflow-hidden flex flex-col shadow-[6px_6px_0px_#1a1a1a]">
-                <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] font-black text-[10px] text-center uppercase tracking-widest">
+                <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] font-black text-sm text-center uppercase tracking-widest">
                     Sân chơi của Rùa 🎨
                 </div>
                 <Preview code={code} runTrigger={runTrigger} />

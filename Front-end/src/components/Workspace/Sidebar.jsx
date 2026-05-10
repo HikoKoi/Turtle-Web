@@ -96,7 +96,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
             <div className="relative group">
               <button
                 onClick={() => handleMenuClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-sm transition-all border-[2.5px] ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-base transition-all border-[2.5px] ${
                   activeMenu === item.label
                     ? 'bg-[var(--orange)] border-[var(--border)] shadow-[4px_4px_0px_#1a1a1a] translate-x-[-2px] translate-y-[-2px]'
                     : 'bg-transparent border-transparent hover:bg-[var(--bg)]'
@@ -134,7 +134,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
                     <div key={p.id} className="relative group/item">
                       <button
                         onClick={() => onLoadProject(p)}
-                        className="w-full text-left text-[11px] font-bold py-2 px-3 pr-8 rounded-lg hover:bg-[var(--yellow)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                        className="w-full text-left text-xs font-bold py-2 px-3 pr-8 rounded-lg hover:bg-[var(--yellow)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
                         title={p.title}
                       >
                         📄 {p.title}
@@ -167,8 +167,8 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
             )}
           </div>
           <div className="overflow-hidden flex-1">
-            <p className="text-[8px] font-black text-gray-400 uppercase leading-none">{user ? 'Hiệp sĩ' : 'Chào bé'}</p>
-            <p className="font-black text-xs truncate uppercase tracking-tighter">
+            <p className="text-[10px] font-black text-gray-400 uppercase leading-none">{user ? 'Hiệp sĩ' : 'Chào bé'}</p>
+            <p className="font-black text-sm truncate uppercase tracking-tighter">
               {user?.first_name || user?.username || 'Hiệp sĩ Rùa'}
             </p>
           </div>
@@ -187,14 +187,14 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
         {user ? (
           <button
             onClick={handleLogoutClick}
-            className="w-full py-2 bg-[var(--pink)] border-[2px] border-[var(--border)] rounded-lg font-black text-xs shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all"
+            className="w-full py-2 bg-[var(--pink)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all"
           >
             ĐĂNG XUẤT 🚪
           </button>
         ) : (
           <button
             onClick={() => navigate('/auth')}
-            className="w-full py-2 bg-[var(--green)] border-[2px] border-[var(--border)] rounded-lg font-black text-xs shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all uppercase tracking-widest"
+            className="w-full py-2 bg-[var(--green)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all uppercase tracking-widest"
           >
             Đăng nhập 🔑
           </button>

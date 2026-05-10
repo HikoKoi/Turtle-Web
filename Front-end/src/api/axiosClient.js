@@ -21,12 +21,20 @@ axiosClient.interceptors.response.use(
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+            // Đừng tự động redirect nếu đang ở API đăng nhập hoặc đăng ký
+            if (originalRequest.url.includes('/login/') || originalRequest.url.includes('/register/')) {
+                return Promise.reject(error);
+            }
+
             originalRequest._retry = true;
             const refreshToken = localStorage.getItem('refresh_token');
 
             if (!refreshToken) {
                 localStorage.clear();
-                window.location.href = '/auth';
+                // Chỉ redirect nếu không phải đang ở trang auth
+                if (window.location.pathname !== '/auth') {
+                    window.location.href = '/auth';
+                }
                 return Promise.reject(error);
             }
 

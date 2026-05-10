@@ -38,6 +38,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email', 'password', 'phone_number', 'birthday')
 
+    def validate_username(self, value):
+        if value and User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Username này đã được sử dụng.")
+        return value
+
     def validate_email(self, value):
         if value and User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email này đã được sử dụng.")
