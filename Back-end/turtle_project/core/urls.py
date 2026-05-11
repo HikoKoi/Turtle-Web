@@ -20,6 +20,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/', include('user.api.urls')),
     path('api/lessons/', include('lesson.api.urls')),
+    path('api/ai/', include('ai_assistant.api.urls')),
 ]
 
 admin.site.site_header = "Turtle Web Administration"

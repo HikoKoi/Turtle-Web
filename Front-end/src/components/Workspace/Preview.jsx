@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export default function Preview({ code, runTrigger }) {
+export default function Preview({ code, runTrigger, onError }) {
   const canvasRef = useRef(null);
   const outputRef = useRef(null);
 
@@ -49,11 +49,16 @@ export default function Preview({ code, runTrigger }) {
     });
 
     myPromise.then(
-      () => console.log("Success!"),
+      () => {
+        console.log("Success!");
+        if (onError) onError(null); // Nếu chạy thành công thì xóa lỗi cũ
+      },
       (err) => {
+        const errorMsg = err.toString();
         if (outputRef.current) {
-          outputRef.current.innerHTML = `<span style="color: #ff5f56; font-weight: 900;">⚠️ Lỗi rồi Hiệp sĩ ơi:</span><br/>${err.toString()}`;
+          outputRef.current.innerHTML = `<span style="color: #ff5f56; font-weight: 900;">⚠️ Lỗi rồi Hiệp sĩ ơi:</span><br/>${errorMsg}`;
         }
+        if (onError) onError(errorMsg);
       }
     );
   };

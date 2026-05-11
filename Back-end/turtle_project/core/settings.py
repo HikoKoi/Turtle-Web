@@ -30,7 +30,8 @@ load_dotenv(dotenv_path=env_path) # 2. Load file .env
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
-     
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG') == 'True'
 
@@ -51,7 +52,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'user', 
     'lesson',
-    'channels'
+    'channels',
+    'ai_assistant'
 ]
 
 ASGI_APPLICATION = 'core.asgi.application'

@@ -230,3 +230,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+Back-end/.env
+Back-end/turtle_project/.env
+Back-end/.env

@@ -55,7 +55,7 @@ export default function WorkspacePage() {
   const [runTrigger, setRunTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
-
+  const [runtimeError, setRuntimeError] = useState({ msg: null, time: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
 
@@ -364,13 +364,22 @@ export default function WorkspacePage() {
               <div className="p-2 border-b-2 border-[var(--border)] bg-[var(--bg)] font-black text-sm text-center uppercase tracking-widest">
                 Sân chơi của Rùa 🎨
               </div>
-              <Preview code={code} runTrigger={runTrigger} />
+              <Preview
+                code={code}
+                runTrigger={runTrigger}
+                onError={(err) => setRuntimeError({ msg: err, time: Date.now() })}
+              />
             </div>
           </div>
         </div>
       </main>
 
-      {user && <ChatbotBubble />}
+      {user && (
+        <ChatbotBubble
+          currentCode={code}
+          errorLog={runtimeError}
+        />
+      )}
       <CommandModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
