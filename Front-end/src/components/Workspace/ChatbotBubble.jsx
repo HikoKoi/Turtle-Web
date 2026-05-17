@@ -5,7 +5,13 @@ import { useAuth } from '../../hooks/useAuth';
 export default function ChatbotBubble({ currentCode, errorLog }) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    if (!user) return [];
+    try {
+      const cached = localStorage.getItem(`turtle_chat_history_${user.username}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasNotification, setHasNotification] = useState(false);
@@ -33,9 +39,18 @@ export default function ChatbotBubble({ currentCode, errorLog }) {
   const loadHistory = async () => {
     try {
       const { data } = await aiApi.getHistory();
-      setMessages(data.length > 0 ? data : [{ role: 'assistant', content: 'Chào Hiệp sĩ! Ta là Rùa già thông thái đây. 🐢✨' }]);
+      const newMsgs = data.length > 0 ? data : [{ role: 'assistant', content: 'Chào Hiệp sĩ! Ta là Rùa già thông thái đây. 🐢✨' }];
+      setMessages(newMsgs);
+      if (user) localStorage.setItem(`turtle_chat_history_${user.username}`, JSON.stringify(newMsgs));
     } catch (err) { console.error(err); }
   };
+
+  // Tự động lưu lịch sử vào cache mỗi khi có tin nhắn mới (chạy cả khi đang stream)
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      localStorage.setItem(`turtle_chat_history_${user.username}`, JSON.stringify(messages));
+    }
+  }, [messages, user]);
 
   const handleSend = async (manualMsg = null, hiddenError = null) => {
     const userMsg = manualMsg || input;

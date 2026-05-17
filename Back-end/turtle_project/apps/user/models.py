@@ -15,7 +15,21 @@ class User(AbstractUser):
     
     is_email_verified = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
+    
+    selected_title = models.CharField(max_length=50, default="Hiệp sĩ tập sự")
+    unlocked_titles = models.JSONField(default=list, blank=True)
    
+    def unlock_title(self, title_name):
+        if not self.unlocked_titles:
+            self.unlocked_titles = ["Hiệp sĩ tập sự"]
+        if title_name not in self.unlocked_titles:
+            self.unlocked_titles.append(title_name)
+            self.save()
+
+    def save(self, *args, **kwargs):
+        if not self.unlocked_titles:
+            self.unlocked_titles = ["Hiệp sĩ tập sự"]
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'user'

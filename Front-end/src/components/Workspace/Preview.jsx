@@ -3,9 +3,27 @@ import { useEffect, useRef } from 'react';
 export default function Preview({ code, runTrigger, onError }) {
   const canvasRef = useRef(null);
   const outputRef = useRef(null);
+  const runIdRef = useRef(0);
 
-  const runPython = () => {
+  const runPython = async () => {
     if (!window.Sk) return;
+
+    // 0. Bắn tín hiệu ngắt (Kill switch) tuyệt đối bằng cách hack thời gian (Time Machine)
+    const originalDateNow = Date.now;
+    window.Sk.hardInterrupt = true;
+    
+    // Đánh lừa Skulpt rằng 100 ngày đã trôi qua, ép vòng lặp cũ vi phạm execLimit và tự sát
+    Date.now = () => originalDateNow() + 1000000000;
+    
+    // Đợi 100ms để vòng lặp cũ thức dậy, kiểm tra thời gian và tự hủy
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Khôi phục lại thời gian thực tế cho tiến trình mới
+    Date.now = originalDateNow;
+    window.Sk.hardInterrupt = false;
+
+    runIdRef.current += 1;
+    const currentRunId = runIdRef.current;
 
     // 1. Dọn dẹp nội dung cũ
     if (outputRef.current) outputRef.current.innerHTML = '';
@@ -25,9 +43,13 @@ export default function Preview({ code, runTrigger, onError }) {
     // 3. Cấu hình Skulpt
     window.Sk.configure({
       output: (text) => {
-        if (outputRef.current) outputRef.current.innerHTML += text;
+        if (runIdRef.current === currentRunId && outputRef.current) {
+          outputRef.current.innerHTML += text;
+        }
       },
       read: builtinRead,
+      execLimit: 60000, // Tránh vòng lặp vô hạn (Dừng sau 60s)
+      yieldLimit: 100, // Cấp lại quyền điều khiển cho trình duyệt để tránh bị treo
       inputfun: (args) => {
         return new Promise((resolve) => {
           const promptMsg = args || "Bé muốn nhập gì vào dòng này? 🐢✨";
@@ -50,11 +72,20 @@ export default function Preview({ code, runTrigger, onError }) {
 
     myPromise.then(
       () => {
+        if (runIdRef.current !== currentRunId) return; // Bỏ qua nếu là tiến trình cũ
         console.log("Success!");
         if (onError) onError(null); // Nếu chạy thành công thì xóa lỗi cũ
       },
       (err) => {
-        const errorMsg = err.toString();
+        if (runIdRef.current !== currentRunId) return; // Bỏ qua hoàn toàn lỗi của tiến trình cũ bị ép dừng
+
+        let errorMsg = err.toString();
+        // Bỏ qua lỗi ngắt chủ động từ hệ thống
+        if (errorMsg.includes("KeyboardInterrupt") || errorMsg.includes("hardInterrupt")) return;
+
+        if (errorMsg.includes("TimeLimitError")) {
+          errorMsg = "Chương trình chạy quá lâu. Rùa đoán là có vòng lặp vô hạn ở đâu đó rồi! 🔄 Thử kiểm tra lại lệnh lặp nhé.";
+        }
         if (outputRef.current) {
           outputRef.current.innerHTML = `<span style="color: #ff5f56; font-weight: 900;">⚠️ Lỗi rồi Hiệp sĩ ơi:</span><br/>${errorMsg}`;
         }

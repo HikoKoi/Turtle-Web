@@ -39,7 +39,7 @@ export default function Editor({ code, onChange }) {
               scrollPastEnd: true,
             }}
             className="h-full"
-            style={{ fontSize: '14px' }}
+            style={{ fontSize: '13px' }}
           />
         </div>
       </div>

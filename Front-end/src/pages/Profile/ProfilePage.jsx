@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '../../hooks/useAuth';
 import authApi from '../../api/authApi';
+import lessonApi from '../../api/lessonApi';
 
 // Hàm helper để tạo ảnh đã cắt từ canvas
 const getCroppedImg = (imageSrc, pixelCrop) => {
@@ -53,6 +54,44 @@ export default function ProfilePage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [showCropper, setShowCropper] = useState(false);
+
+  // Trạng thái Danh hiệu & Tiến trình
+  const [completedStages, setCompletedStages] = useState([]);
+  const [unlockedTitles, setUnlockedTitles] = useState(["Hiệp sĩ tập sự"]);
+  const [selectedTitle, setSelectedTitle] = useState("Hiệp sĩ tập sự");
+
+  const fetchProgress = async () => {
+    try {
+      const { data } = await lessonApi.getStageProgress();
+      setCompletedStages(data.completed_stages || []);
+      setUnlockedTitles(data.unlocked_titles || ["Hiệp sĩ tập sự"]);
+      setSelectedTitle(data.selected_title || "Hiệp sĩ tập sự");
+    } catch (err) {
+      console.error("Lỗi khi tải tiến trình:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchProgress();
+    }
+  }, [user]);
+
+  const handleSelectTitle = async (titleName) => {
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const { data } = await lessonApi.updateTitle(titleName);
+      setSelectedTitle(data.selected_title);
+      setUser({ ...user, selected_title: data.selected_title });
+      setMessage({ type: 'success', text: 'Đổi danh hiệu thành công! Oai phong quá con ơi! 👑🦁' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: getErrorText(err.response?.data, 'Lỗi khi đổi danh hiệu! ❌') });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [infoData, setInfoData] = useState({
     first_name: user?.first_name || '',
@@ -265,8 +304,9 @@ export default function ProfilePage() {
             </div>
 
             <div className="text-center w-full">
+              <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">{selectedTitle || 'Hiệp sĩ tập sự'}</p>
               <h2 className="font-black text-lg uppercase truncate">{user?.first_name || user?.username || 'Hiệp sĩ Rùa'}</h2>
-              <p className="text-[10px] font-black text-[var(--cyan)] uppercase">@{user?.username || 'username'}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase">@{user?.username || 'username'}</p>
             </div>
 
             <div className="w-full pt-4 border-t-2 border-[var(--bg)] text-center">
@@ -310,6 +350,73 @@ export default function ProfilePage() {
                 <input type="email" name="email" placeholder="email@vidu.com" value={infoData.email} onChange={handleInfoChange} className="w-full p-3 border-2 border-[var(--border)] rounded-lg font-bold bg-[var(--bg)] outline-none" />
               </div>
               <button onClick={handleUpdateInfo} disabled={isLoading} className="w-full py-3 mt-4 neo-btn-primary bg-[var(--yellow)] font-black text-sm uppercase">Lưu thay đổi 💾</button>
+            </div>
+          </div>
+
+          {/* SECTION 3: TITLES */}
+          <div className="neo-card bg-white overflow-hidden transition-all duration-300">
+            <button onClick={() => setActiveTab('titles')} className={`w-full p-6 flex justify-between items-center font-black text-left uppercase ${activeTab === 'titles' ? 'bg-[var(--cyan)] text-white' : 'hover:bg-gray-50'}`}>
+              <span>🏆 Danh hiệu của bé</span>
+              <span className="text-xl">{activeTab === 'titles' ? '−' : '+'}</span>
+            </button>
+            <div className={`p-6 space-y-4 ${activeTab === 'titles' ? 'block' : 'hidden'} animate-in slide-in-from-top-2`}>
+              <p className="text-xs font-bold text-gray-500 mb-4 leading-relaxed">
+                Vượt qua các chặng thử thách của Sư phụ Rùa để tích lũy điểm số và mở khóa các danh hiệu oai phong nhé! Con hãy bấm vào danh hiệu đã mở khóa để kích hoạt. 🐢⚡
+              </p>
+              
+              <div className="space-y-4">
+                {[
+                  { key: "Hiệp sĩ tập sự", name: "Hiệp Sĩ Tập Sự ⚔️", desc: "Danh hiệu khởi đầu cho mọi hiệp sĩ nhỏ khi mới gia nhập thế giới Turtle Code." },
+                  { key: "Họa Sĩ Sắc Màu 🎨", name: "Họa Sĩ Sắc Màu 🎨", desc: "Mở khóa khi hoàn thành Chặng 2. Bạn đã biết pha màu vẽ và tô kín màu cho chú Rùa!" },
+                  { key: "Chúa Tể Vòng Lặp 🔄", name: "Chúa Tể Vòng Lặp 🔄", desc: "Mở khóa khi hoàn thành Chặng 4. Thành thạo phép thuật lặp vô tận giúp vẽ hoa văn siêu nhanh!" },
+                  { key: "Phù Thủy Tọa Độ 🌀", name: "Phù Thủy Tọa Độ 🌀", desc: "Mở khóa khi hoàn thành Chặng 7. Điều khiển Rùa bay nhảy chính xác đến từng tọa độ trên sân vẽ!" },
+                  { key: "Chiến Binh Rùa Thần 🏆", name: "Chiến Binh Rùa Thần 🏆", desc: "Danh hiệu tối cao! Mở khóa khi hoàn thành toàn bộ 10 Chặng thử thách vĩ đại." }
+                ].map((t) => {
+                  const isUnlocked = unlockedTitles.some(ut => ut.toLowerCase().replace(/[^a-z0-9]/g, '') === t.key.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                  const isActive = selectedTitle.toLowerCase().replace(/[^a-z0-9]/g, '') === t.key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                  return (
+                    <div 
+                      key={t.key}
+                      onClick={() => isUnlocked && handleSelectTitle(t.key)}
+                      className={`p-4 border-2 rounded-xl transition-all flex items-center justify-between gap-4 select-none ${
+                        isActive 
+                          ? 'bg-amber-50 border-amber-400 shadow-[4px_4px_0px_#d97706]' 
+                          : isUnlocked 
+                          ? 'bg-white border-[var(--border)] hover:bg-gray-50 hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_#1a1a1a] cursor-pointer' 
+                          : 'bg-gray-100 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-black text-sm ${isActive ? 'text-amber-700' : isUnlocked ? 'text-gray-900' : 'text-gray-400'}`}>
+                            {t.name}
+                          </span>
+                          {isActive && (
+                            <span className="bg-amber-400 border border-amber-600 text-amber-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase leading-none shadow-[1px_1px_0px_rgba(0,0,0,0.15)] animate-pulse">
+                              Đang dùng
+                            </span>
+                          )}
+                          {!isUnlocked && (
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">🔒 Chưa mở khóa</span>
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-gray-500 mt-1 leading-relaxed">{t.desc}</p>
+                      </div>
+                      
+                      <div className="shrink-0 select-none">
+                        {isActive ? (
+                          <span className="text-2xl">🌟</span>
+                        ) : isUnlocked ? (
+                          <span className="text-xl">🔓</span>
+                        ) : (
+                          <span className="text-xl">🔒</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

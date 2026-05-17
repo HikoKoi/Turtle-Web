@@ -63,3 +63,24 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"{self.title} (by {self.student.username})"
+
+
+class UserStageProgress(models.Model):
+    """Lưu trữ tiến trình hoàn thành 10 chặng của từng học sinh"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='stage_progress'
+    )
+    stage_number = models.IntegerField(help_text="Số thứ tự chặng (1 đến 10)")
+    is_completed = models.BooleanField(default=False)
+    submitted_code = models.TextField(blank=True, null=True)
+    completed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_stage_progress'
+        unique_together = ('user', 'stage_number')
+        ordering = ['stage_number']
+
+    def __str__(self):
+        return f"{self.user.username} - Chặng {self.stage_number} ({'Đã xong' if self.is_completed else 'Chưa xong'})"

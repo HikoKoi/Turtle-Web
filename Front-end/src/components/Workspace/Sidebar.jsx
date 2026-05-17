@@ -4,6 +4,19 @@ import { useProjects } from '../../contexts/ProjectContext';
 import { useNavigate } from 'react-router-dom';
 import lessonApi from '../../api/lessonApi';
 
+export const STAGE_TITLES = {
+  1: 'Đánh thức Rùa Họa sĩ 🐢',
+  2: 'Bộ cọ vẽ đa sắc 🎨',
+  3: 'Chiếc hộp thần kỳ 📦',
+  4: 'Vòng lặp vạn hoa 🔄',
+  5: 'Đưa Rùa bay lượn 🚀',
+  6: 'Phép thuật quyết định 🚦',
+  7: 'Vòng xoáy vô tận ⏳',
+  8: 'Bửu bối đa sắc 🌈',
+  9: 'Tự chế phép thuật 🔮',
+  10: 'Phép thuật biến hóa 🪄'
+};
+
 const SAMPLE_PROGRAMS = [
   {
     title: 'Đường Hầm Siêu Tốc',
@@ -19,13 +32,24 @@ const SAMPLE_PROGRAMS = [
   }
 ];
 
-export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick, onResetPlayground, hasUnsavedChanges }) {
+export default function Sidebar({ 
+  onLoadProject, 
+  onNewProject, 
+  onPlaygroundClick, 
+  onResetPlayground, 
+  hasUnsavedChanges,
+  completedStages = [],
+  selectedTitle = "Hiệp Sĩ Tập Sự ⚔️",
+  activeStage = null,
+  onStageClick
+}) {
   const { user, logout } = useAuth();
   const { projects, fetchProjects } = useProjects();
   const navigate = useNavigate();
 
-  const [activeMenu, setActiveMenu] = useState(user ? 'Dự án của tôi' : 'Playground');
-  const [showProjects, setShowProjects] = useState(true);
+  const [activeMenu, setActiveMenu] = useState(user ? 'Hành trình của bé' : 'Playground');
+  const [expandedMenu, setExpandedMenu] = useState(user ? 'Hành trình của bé' : 'Playground');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // ... (các hàm khác giữ nguyên) ...
 
@@ -50,15 +74,15 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
   };
 
   useEffect(() => {
-    if (activeMenu === 'Dự án của tôi') {
-      setShowProjects(true);
-    } else {
-      setShowProjects(false);
-      if (activeMenu === 'Playground') {
-        onPlaygroundClick();
-      }
+    setExpandedMenu(user ? 'Hành trình của bé' : 'Playground');
+    setActiveMenu(user ? 'Hành trình của bé' : 'Playground');
+  }, [user]);
+
+  useEffect(() => {
+    if (activeMenu === 'Playground') {
+      onPlaygroundClick();
     }
-  }, [activeMenu, user]);
+  }, [activeMenu]);
 
   const handleDelete = async (e, id, title) => {
     e.stopPropagation();
@@ -74,6 +98,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
   };
 
   const menuItems = user ? [
+    { icon: '📜', label: 'Hành trình của bé' },
     { icon: '📁', label: 'Dự án của tôi' },
     { icon: '🎨', label: 'Playground' },
     { icon: '📖', label: 'Wiki', path: '/wiki' },
@@ -87,6 +112,11 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
       navigate(item.path);
     } else {
       setActiveMenu(item.label);
+      if (expandedMenu === item.label) {
+        setExpandedMenu(null);
+      } else {
+        setExpandedMenu(item.label);
+      }
     }
   };
 
@@ -97,27 +127,41 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
   };
 
   return (
-    <div className="w-64 h-screen bg-white border-r-[3px] border-[var(--border)] flex flex-col p-4 shrink-0">
+    <div className={`h-screen bg-white border-r-[3px] border-[var(--border)] flex flex-col p-4 shrink-0 transition-all duration-300 relative ${isCollapsed ? 'w-24' : 'w-72'}`}>
+      {/* Nút Thu gọn/Mở rộng */}
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute top-6 -right-4 w-8 h-8 bg-white border-[3px] border-[var(--border)] rounded-full flex items-center justify-center cursor-pointer shadow-[2px_2px_0px_#1a1a1a] z-50 hover:bg-[var(--pink)] transition-colors"
+      >
+        <span className={`text-xs font-black transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}>◀</span>
+      </button>
+
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-10 px-2 shrink-0 cursor-pointer" onClick={() => navigate('/')}>
-        <span className="text-3xl">🐢</span>
-        <span className="font-black text-xl tracking-tight uppercase">Turtle Code</span>
+      <div className={`flex items-center gap-3 mb-10 shrink-0 cursor-pointer overflow-hidden ${isCollapsed ? 'justify-center px-0' : 'px-2'}`} onClick={() => navigate('/')}>
+        <span className="text-3xl shrink-0">🐢</span>
+        {!isCollapsed && <span className="font-black text-xl tracking-tight uppercase whitespace-nowrap">Turtle Code</span>}
       </div>
 
       {/* Menu & Project List */}
-      <nav className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
+      <nav className={`flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1 overflow-x-hidden ${isCollapsed ? 'items-center' : ''}`}>
         {menuItems.map((item) => (
-          <div key={item.label}>
-            <div className="relative group">
+          <div key={item.label} className={isCollapsed ? 'flex justify-center' : ''}>
+            <div className={`relative group ${isCollapsed ? 'w-fit' : 'w-full'}`}>
               <button
-                onClick={() => handleMenuClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-base transition-all border-[2.5px] ${activeMenu === item.label
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  handleMenuClick(item);
+                }}
+                className={`flex items-center gap-3 py-3.5 rounded-xl font-black text-base sm:text-lg whitespace-nowrap transition-all border-[2.5px] overflow-hidden ${
+                  isCollapsed ? 'justify-center px-3.5 w-[52px]' : 'px-4 w-full'
+                } ${activeMenu === item.label
                   ? 'bg-[var(--orange)] border-[var(--border)] shadow-[4px_4px_0px_#1a1a1a] translate-x-[-2px] translate-y-[-2px]'
                   : 'bg-transparent border-transparent hover:bg-[var(--bg)]'
                   }`}
+                title={isCollapsed ? item.label : ''}
               >
-                <span className="text-xl">{item.icon}</span>
-                {item.label}
+                <span className="text-xl shrink-0">{item.icon}</span>
+                {!isCollapsed && <span>{item.label}</span>}
               </button>
 
               {user && item.label === 'Dự án của tôi' && activeMenu === 'Dự án của tôi' && (
@@ -141,13 +185,13 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
               )}
             </div>
 
-            {item.label === 'Playground' && activeMenu === 'Playground' && (
+            {!isCollapsed && item.label === 'Playground' && expandedMenu === 'Playground' && (
               <div className="mt-2 ml-4 space-y-2 border-l-2 border-[var(--border)] pl-4 py-2 animate-in slide-in-from-top-2">
-                <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Bài vẽ mẫu của hệ thống</div>
+                <div className="text-xs font-black text-gray-400 uppercase mb-2">Bài vẽ mẫu của hệ thống</div>
 
                 <button
                   onClick={() => onPlaygroundClick('default', null, 'Playground 🎨')}
-                  className="w-full text-left text-xs font-bold py-2 px-3 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                  className="w-full text-left text-sm sm:text-base font-extrabold py-2.5 px-3.5 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
                   title="Playground 🎨"
                 >
                   🎨 Playground
@@ -157,7 +201,7 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
                   <button
                     key={idx}
                     onClick={() => onPlaygroundClick(`sample_${idx}`, sample.code, sample.title)}
-                    className="w-full text-left text-xs font-bold py-2 px-3 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                    className="w-full text-left text-sm sm:text-base font-extrabold py-2.5 px-3.5 rounded-lg hover:bg-[var(--green)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
                     title={sample.title}
                   >
                     🎨 {sample.title}
@@ -166,28 +210,63 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
               </div>
             )}
 
-            {user && item.label === 'Dự án của tôi' && showProjects && (
+            {!isCollapsed && user && item.label === 'Hành trình của bé' && expandedMenu === 'Hành trình của bé' && (
+              <div className="mt-2 ml-4 space-y-2 border-l-2 border-[var(--border)] pl-4 py-2 animate-in slide-in-from-top-2">
+                <div className="text-xs font-black text-gray-400 uppercase mb-2">10 Chặng vẽ ma thuật</div>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const stageNum = i + 1;
+                  const isCompleted = completedStages.includes(stageNum);
+                  const isLocked = stageNum > 1 && !completedStages.includes(stageNum - 1);
+                  const isActive = activeStage === stageNum;
+                  
+                  return (
+                    <button
+                      key={stageNum}
+                      disabled={isLocked}
+                      onClick={() => onStageClick(stageNum)}
+                      className={`w-full text-left text-sm sm:text-base font-extrabold py-2.5 px-3.5 rounded-lg border-2 transition-all flex items-center justify-between ${
+                        isActive
+                          ? 'bg-[var(--yellow)] border-[var(--border)] shadow-[2px_2px_0px_#1a1a1a] translate-x-[-1px] translate-y-[-1px]'
+                          : isLocked
+                          ? 'bg-gray-100 border-transparent text-gray-400 cursor-not-allowed opacity-60'
+                          : 'hover:bg-[var(--green)] border-transparent hover:border-[var(--border)]'
+                      }`}
+                      title={STAGE_TITLES[stageNum]}
+                    >
+                      <span className="truncate">
+                        {stageNum}. {STAGE_TITLES[stageNum]}
+                      </span>
+                      <span className="shrink-0 ml-1">
+                        {isLocked ? '🔒' : isCompleted ? '✅' : '▶️'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {!isCollapsed && user && item.label === 'Dự án của tôi' && expandedMenu === 'Dự án của tôi' && (
               <div className="mt-2 ml-4 space-y-2 border-l-2 border-[var(--border)] pl-4 py-2 animate-in slide-in-from-top-2">
                 {projects.length > 0 ? (
                   projects.map((p) => (
                     <div key={p.id} className="relative group/item">
                       <button
                         onClick={() => onLoadProject(p)}
-                        className="w-full text-left text-xs font-bold py-2 px-3 pr-8 rounded-lg hover:bg-[var(--yellow)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
+                        className="w-full text-left text-sm sm:text-base font-extrabold py-2.5 px-3.5 pr-8 rounded-lg hover:bg-[var(--yellow)] border-2 border-transparent hover:border-[var(--border)] transition-all truncate"
                         title={p.title}
                       >
                         📄 {p.title}
                       </button>
                       <button
                         onClick={(e) => handleDelete(e, p.id, p.title)}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
                       >
                         ✕
                       </button>
                     </div>
                   ))
                 ) : (
-                  <p className="text-[10px] font-bold text-gray-400 italic">Chưa có dự án nào...</p>
+                  <p className="text-xs font-bold text-gray-400 italic">Chưa có dự án nào...</p>
                 )}
               </div>
             )}
@@ -196,8 +275,8 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
       </nav>
 
       {/* User Info & Logout */}
-      <div className="mt-auto pt-4 border-t-2 border-[var(--bg)] shrink-0">
-        <div className="flex items-center gap-3 p-2 bg-[var(--bg)] rounded-xl border-[2px] border-[var(--border)] mb-3 relative group">
+      <div className="mt-auto pt-4 border-t-2 border-[var(--bg)] shrink-0 overflow-hidden">
+        <div className={`flex items-center gap-3 p-2 bg-[var(--bg)] rounded-xl border-[2px] border-[var(--border)] mb-3 relative group overflow-hidden ${isCollapsed ? 'justify-center' : ''}`}>
           <div className="w-10 h-10 bg-white rounded-full border-2 border-[var(--border)] flex items-center justify-center overflow-hidden shrink-0 shadow-[2px_2px_0px_rgba(0,0,0,0.1)]">
             {user?.avatar ? (
               <img src={getAvatarUrl()} alt="Avatar" className="w-full h-full object-cover" />
@@ -205,17 +284,20 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
               <span className="text-xl">{user ? '👤' : '🐢'}</span>
             )}
           </div>
-          <div className="overflow-hidden flex-1">
-            <p className="text-[10px] font-black text-gray-400 uppercase leading-none">{user ? 'Hiệp sĩ' : 'Chào bé'}</p>
-            <p className="font-black text-sm truncate uppercase tracking-tighter">
-              {user?.first_name || user?.username || 'Hiệp sĩ Rùa'}
-            </p>
-          </div>
+          
+          {!isCollapsed && (
+            <div className="overflow-hidden flex-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase leading-none">{user ? (selectedTitle || 'Hiệp Sĩ Tập Sự ⚔️') : 'Chào bé'}</p>
+              <p className="font-black text-sm truncate uppercase tracking-tighter">
+                {user?.first_name || user?.username || 'Hiệp sĩ Rùa'}
+              </p>
+            </div>
+          )}
 
-          {user && (
+          {!isCollapsed && user && (
             <button
               onClick={() => navigate('/profile')}
-              className="w-7 h-7 bg-white border-2 border-[var(--border)] rounded-md flex items-center justify-center text-xs shadow-[2px_2px_0px_#000] hover:bg-[var(--yellow)] transition-all active:shadow-none active:translate-y-[1px]"
+              className="w-7 h-7 bg-white border-2 border-[var(--border)] rounded-md flex items-center justify-center text-xs shadow-[2px_2px_0px_#000] hover:bg-[var(--yellow)] transition-all active:shadow-none active:translate-y-[1px] shrink-0"
               title="Cài đặt tài khoản"
             >
               ⚙️
@@ -226,16 +308,18 @@ export default function Sidebar({ onLoadProject, onNewProject, onPlaygroundClick
         {user ? (
           <button
             onClick={handleLogoutClick}
-            className="w-full py-2 bg-[var(--pink)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all"
+            className={`w-full py-2 bg-[var(--pink)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all flex items-center justify-center gap-2 ${isCollapsed ? 'px-0' : ''}`}
+            title="Đăng xuất"
           >
-            ĐĂNG XUẤT 🚪
+            {isCollapsed ? '🚪' : 'ĐĂNG XUẤT 🚪'}
           </button>
         ) : (
           <button
             onClick={() => navigate('/auth')}
-            className="w-full py-2 bg-[var(--green)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all uppercase tracking-widest"
+            className={`w-full py-2 bg-[var(--green)] border-[2px] border-[var(--border)] rounded-lg font-black text-sm shadow-[3px_3px_0px_#1a1a1a] hover:translate-y-[1px] active:shadow-none transition-all uppercase tracking-widest flex items-center justify-center gap-2 ${isCollapsed ? 'px-0' : ''}`}
+            title="Đăng nhập"
           >
-            Đăng nhập 🔑
+            {isCollapsed ? '🔐' : 'ĐĂNG NHẬP 🔐'}
           </button>
         )}
       </div>
